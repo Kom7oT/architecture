@@ -1,5 +1,7 @@
 package ru.geekbrains;
 
+import ru.geekbrains.domain.HttpRequest;
+import ru.geekbrains.domain.HttpResponse;
 import ru.geekbrains.service.FileService;
 import ru.geekbrains.service.SocketService;
 
@@ -12,32 +14,42 @@ public class RequestHandler implements Runnable {
 
     private final FileService fileService;
 
-    public RequestHandler(SocketService socketService, FileService fileService) {
+    private final RequestParser requestParser;
+
+    private final ResponseSerializer responseSerializer;
+
+    public RequestHandler(SocketService socketService,
+                          FileService fileService,
+                          RequestParser requestParser,
+                          ResponseSerializer responseSerializer) {
         this.socketService = socketService;
         this.fileService = fileService;
+        this.requestParser = requestParser;
+        this.responseSerializer = responseSerializer;
     }
 
     @Override
     public void run() {
         Deque<String> rawRequest = socketService.readRequest();
-        String firstLine = rawRequest.pollFirst();
-        String[] parts = firstLine.split(" ");
+        HttpRequest request = requestParser.parse(rawRequest);
 
-        if (!fileService.exists(parts[1])) {
-            String rawResponse =
-                    "HTTP/1.1 404 NOT_FOUND\n" +
-                    "Content-Type: text/html; charset=utf-8\n" +
-                    "\n" +
-                    "<h1>Файл не найден!</h1>";
-            socketService.writeResponse(rawResponse);
+        if (!fileService.exists(request.getUrl())) {
+            HttpResponse response = HttpResponse.createBuilder()
+                    .withStatusCode(404)
+                    .withStatusCodeName("NOT_FOUND")
+                    .withHeader("Content-Type", "text/html; charset=utf-8")
+                    .build();
+            socketService.writeResponse(responseSerializer.serialize(response));
             return;
         }
 
-        String rawResponse = "HTTP/1.1 200 OK\n" +
-                "Content-Type: text/html; charset=utf-8\n" +
-                "\n" +
-                fileService.readFile(parts[1]);
-        socketService.writeResponse(rawResponse);
+        HttpResponse response = HttpResponse.createBuilder()
+                .withStatusCode(200)
+                .withStatusCodeName("OK")
+                .withHeader("Content-Type", "text/html; charset=utf-8")
+                .withBody(fileService.readFile(request.getUrl()))
+                .build();
+        socketService.writeResponse(responseSerializer.serialize(response));
 
         try {
             socketService.close();
