@@ -6,15 +6,17 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="examples" />
         <module name="rx-web-server" />
         <module name="geek-web-server" />
+        <module name="examples" />
+        <module name="simple-crud" />
       </profile>
     </annotationProcessing>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="geek-web-server" options="" />
+      <module name="simple-crud" options="-parameters" />
     </option>
   </component>
 </project>
